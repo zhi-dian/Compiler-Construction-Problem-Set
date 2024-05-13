@@ -1,3 +1,15 @@
+/CompilerInOcaml
+/project
+
+
+
+*cmi
+*cmo
+*mll
+*mli
+*mly
+
+output*
 *.annot
 *.cmo
 *.cma

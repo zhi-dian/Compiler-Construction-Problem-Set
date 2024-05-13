@@ -1,0 +1,53 @@
+main() {
+ let a = 9; {
+ let b = 5; {
+ let c = 1; {
+ let d = 0; {
+ let e = 7; {
+ while (a < 10) {
+   while(b < 5)
+     while(c < 27) 
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+      while (e < 50)
+	for (g = 0; g < 25; g = g + 1) {
+	  e = e + 27;
+	  a = 27 * e;
+	  b = 100 + e + a;
+ 	  d = 100 - e + c;
+	  g = 27 + 27 + 27 + c; 
+	return 0;
+	}
+ } } } } } }
+ return 0;
+}
