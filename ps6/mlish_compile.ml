@@ -109,20 +109,9 @@ let rec compile_exp (e:ML.exp) : S.exp =
       | _ -> raise ImplementMe)
         
     | Hd ->  PrimApp(Fst,[PrimApp(Snd,List.map compile_e e_list)])
-    | Tl -> 
-      (match e_list with
-      | e1::[] -> 
-        (* print_endline (expr2string e1); *)
-        let com_e1 = compile_e e1 in
-          If(PrimApp(Eq,[PrimApp(Fst,[com_e1]);Int(1)]),
-          PrimApp(Snd,[com_e1]),
-          (match e1 with
-            | (ML.PrimApp(ML.Cons,[e1a;(ML.PrimApp(ML.Cons,[e2a;e2b]),_)]),_) ->
-              (compile_e (ML.PrimApp(ML.Cons,[(ML.PrimApp(Minus,[e1a;(ML.PrimApp(Int(1),[]),0)]),0);e2b]),0))
-            | _-> raise ImplementMe
-          )
-          )
-      | _ -> raise ImplementMe)
+    | Tl ->  let com_e = List.map compile_e e_list in
+              PrimApp(Cons,[PrimApp(Minus,[PrimApp(Fst,com_e);Int(1)]);
+                            PrimApp(Snd,[PrimApp(Snd,com_e)])])
 
   in
   match e with

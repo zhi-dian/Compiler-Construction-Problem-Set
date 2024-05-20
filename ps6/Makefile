@@ -28,9 +28,6 @@ f=/home/zhidian/comc/ps6/extra_tests_ps6/auto-simple-007.ml
 check:
 	./ps6_mlish typecheck $(f)
 
-test:
-	./ps6_mlish typecheck test.ml
-
 comp:
 	./ps6_mlish compile $(f)
 
