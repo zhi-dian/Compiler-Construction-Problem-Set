@@ -8,10 +8,54 @@ module StringtoType = struct
   type t = (var*Mlish_ast.tipe) list
 end
 
-let extend (env:StringtoType.t) (x:Mlish_ast.var) (t:Mlish_ast.tipe): StringtoType.t= 
+type tenv = (var*tipe_scheme) list
+
+let rec tipe2str (t:tipe):string = 
+  match t with
+    Tvar_t tvar -> "'" ^ tvar
+  | Int_t -> "int"
+  | Bool_t -> "bool"
+  | Unit_t -> "unit"
+  | Fn_t (t1, t2) -> "(" ^ tipe2str t1 ^ ") -> (" ^ tipe2str t2 ^ ")"
+  | Pair_t (t1, t2) -> "(" ^ tipe2str t1 ^ ") * (" ^ tipe2str t2 ^ ")"
+  | List_t t -> "(" ^ tipe2str t ^ ") list"
+  | Guess_t tr ->
+      match !tr with
+      | None -> "(None)"
+      | Some t -> tipe2str t
+let rec expr2string ((e, _): exp) : string =
+  match e with
+  | Var var -> "Var " ^ var
+  | PrimApp (prim, exps) -> "PrimApp (" ^ prim2string prim ^ ", [" ^ String.concat "; " (List.map expr2string exps) ^ "])"
+  | Fn (v, e) -> "Fn (" ^ v ^ ", " ^ expr2string e ^ ")"
+  | App (e1, e2) -> "App (" ^ expr2string e1 ^ ", " ^ expr2string e2 ^ ")"
+  | If (e1, e2, e3) -> "If (" ^ expr2string e1 ^ ", " ^ expr2string e2 ^ ", " ^ expr2string e3 ^ ")"
+  | Let (v, e1, e2) -> "Let (" ^ v ^ ", " ^ expr2string e1 ^ ", " ^ expr2string e2 ^ ")"
+and prim2string prim = 
+  match prim with
+  | Int n -> "Int " ^ string_of_int n
+  | Bool b -> "Bool " ^ string_of_bool b
+  | Unit -> "Unit"
+  | Plus -> "Plus"
+  | Minus -> "Minus"
+  | Times -> "Times"
+  | Div -> "Div"
+  | Eq -> "Eq"
+  | Lt -> "Lt"
+  | Pair -> "Pair"
+  | Fst -> "Fst"
+  | Snd -> "Snd"
+  | Nil -> "Nil"
+  | Cons -> "Cons"
+  | IsNil -> "IsNil"
+  | Hd -> "Hd"
+  | Tl -> "Tl"
+
+
+let extend (env:tenv) (x:Mlish_ast.var) (t:Mlish_ast.tipe_scheme): tenv= 
   [(x,t)]@env
 
-let rec lookup (env:StringtoType.t) (x:Mlish_ast.var): Mlish_ast.tipe=
+let rec lookup (env:tenv) (x:Mlish_ast.var): Mlish_ast.tipe_scheme=
   match env with
   | [] -> type_error("")
   | (xa,ta)::res -> if xa = x then ta else (lookup res x)
@@ -34,49 +78,120 @@ let rec is_equal (t1:tipe) (t2:tipe): bool=
   | List_t(t1), List_t(t2) -> is_equal t1 t2
   | _, _ -> false
 
-  let rec tipe2str (t:tipe):string = 
-    match t with
-      Tvar_t tvar -> "'" ^ tvar
-    | Int_t -> "int"
-    | Bool_t -> "bool"
-    | Unit_t -> "unit"
-    | Fn_t (t1, t2) -> "(" ^ tipe2str t1 ^ ") -> (" ^ tipe2str t2 ^ ")"
-    | Pair_t (t1, t2) -> "(" ^ tipe2str t1 ^ ") * (" ^ tipe2str t2 ^ ")"
-    | List_t t -> "(" ^ tipe2str t ^ ") list"
-    | Guess_t tr ->
-       match !tr with
-       | None -> "(None)"
-       | Some t -> tipe2str t
-  let rec expr2string ((e, _): exp) : string =
-    match e with
-    | Var var -> "Var " ^ var
-    | PrimApp (prim, exps) -> "PrimApp (" ^ prim2string prim ^ ", [" ^ String.concat "; " (List.map expr2string exps) ^ "])"
-    | Fn (v, e) -> "Fn (" ^ v ^ ", " ^ expr2string e ^ ")"
-    | App (e1, e2) -> "App (" ^ expr2string e1 ^ ", " ^ expr2string e2 ^ ")"
-    | If (e1, e2, e3) -> "If (" ^ expr2string e1 ^ ", " ^ expr2string e2 ^ ", " ^ expr2string e3 ^ ")"
-    | Let (v, e1, e2) -> "Let (" ^ v ^ ", " ^ expr2string e1 ^ ", " ^ expr2string e2 ^ ")"
-  and prim2string prim = 
-    match prim with
-    | Int n -> "Int " ^ string_of_int n
-    | Bool b -> "Bool " ^ string_of_bool b
-    | Unit -> "Unit"
-    | Plus -> "Plus"
-    | Minus -> "Minus"
-    | Times -> "Times"
-    | Div -> "Div"
-    | Eq -> "Eq"
-    | Lt -> "Lt"
-    | Pair -> "Pair"
-    | Fst -> "Fst"
-    | Snd -> "Snd"
-    | Nil -> "Nil"
-    | Cons -> "Cons"
-    | IsNil -> "IsNil"
-    | Hd -> "Hd"
-    | Tl -> "Tl"
-  
+
+(* HM Algorithm *)
+
+let rec find_tvar (b:(tvar*tipe) list) (tv:tvar):tipe=
+  match b with
+  | (tv1,t)::res -> (if tv1=tv then
+        t
+      else
+        (find_tvar res tv))
+  | _ -> type_error "tvar missing"
+
+(*b: tvar and its corresponding new guess
+  change all the free vars to a new guesses*)
+let rec substitude (b:(tvar*tipe)list) (t:tipe):tipe = 
+  match t with 
+  | Tvar_t(tv) -> 
+    let new_guess = find_tvar b tv in
+    new_guess
+  | Int_t -> Int_t
+  | Bool_t -> Bool_t
+  | Unit_t -> Unit_t
+  | Fn_t(t1,t2) -> Fn_t(substitude b t1,substitude b t2)
+  | Pair_t(t1,t2) -> Pair_t(substitude b t1,substitude b t2)
+  | List_t(t1) -> List_t(substitude b t1)
+  | Guess_t(t1) -> 
+    match !t1 with
+    | Some t1' -> 
+      t1:=Some (substitude b t1');t
+    | None -> t
+(*is there situation when a free variable exits inside a guess?*)
+
+let instantiate s:tipe=
+  match s with
+  | Forall(vs,t) ->
+    let b = List.map (fun a -> (a,guess())) vs
+    in
+    substitude b t
+
+let rec guess_of_tipe t:tipe list=
+  match t with 
+  | Tvar_t(_)| Int_t| Bool_t| Unit_t -> []
+  | Fn_t(t1,t2) -> (guess_of_tipe t1)@(guess_of_tipe t2)
+  | Pair_t(t1,t2) -> (guess_of_tipe t1)@(guess_of_tipe t2)
+  | List_t(t1) -> guess_of_tipe t1
+  | Guess_t(t1) -> 
+    match !t1 with
+    | Some t1' -> guess_of_tipe t1'
+    | None -> [t]
+
+(*simulate set on guess list, cannot construct guess set because no compare rule*)
+let rec check_exit a_list (element:tipe)=
+  match element with
+  | Guess_t(element') ->
+    (match a_list with
+    | [] -> false
+    | Guess_t(a)::res -> if a==element' then true else check_exit res element
+    | _ -> type_error "only guesses in the list but find other type")
+  | _ -> type_error "only guesses in the list but find other type"
+
+let rec union list1 list2 = 
+  match list1 with
+  | ele::res -> if check_exit list2 ele then union res list2 else ele::(union res list2)
+  | [] -> list2
+
+let rec minus list1 list2 =
+  match list1 with
+  | [] -> []
+  | a::res -> if check_exit list2 a then 
+    (minus res list2) else
+    a::(minus res list2)
+
+let rec guess_of_env s = 
+  match s with
+  | Forall(_,t) -> guess_of_tipe t
+
+  (*t is a guess for sure, None?*)
+let rec find_var_ref (gx_vs:(tipe*var)list) (t:tipe):var = 
+  match t with 
+  | Guess_t(t') -> 
+    (match gx_vs with 
+    | (Guess_t(gs'), fvar)::res -> if gs' == t' then fvar else (find_var_ref res t)
+    | _ -> type_error "tvar not found")
+  | _ -> type_error "should be guess"
+(*change all the guesses to free variables*)
+let rec subst_guess (gx_vs:(tipe*var)list) (t:tipe):tipe = 
+  match t with 
+  | Tvar_t(tv) -> Tvar_t(tv)
+  | Int_t -> Int_t
+  | Bool_t -> Bool_t
+  | Unit_t -> Unit_t
+  | Fn_t(t1,t2) -> Fn_t(subst_guess gx_vs t1,subst_guess gx_vs t2)
+  | Pair_t(t1,t2) -> Pair_t(subst_guess gx_vs t1,subst_guess gx_vs t2)
+  | List_t(t1) -> List_t(subst_guess gx_vs t1)
+  | Guess_t(t1) -> 
+    match !t1 with
+    | Some t1' -> 
+      t1:= Some (subst_guess gx_vs t1');t
+    | None -> Tvar_t(find_var_ref gx_vs t)
+(*avoid duplication: in subst_guess, only the first guess will be subst
+   duplication might happen if a tipe has several guess using the same reference*)
+    let generalize(e:tenv)(t:tipe):tipe_scheme =
+  let t_gs = guess_of_tipe t in
+  let env_list_gs =
+    List.map (fun (x,s) -> guess_of_env s) e in
+  let env_gs = List.fold_left union [] env_list_gs in
+  let diff = minus t_gs env_gs in
+  let gs_vs =
+    List.map (fun g -> (g,ppfreshtvar())) diff in
+  let tc = subst_guess gs_vs t
+  in
+  Forall(List.map snd gs_vs, tc) 
+
 let type_check_exp (e:Mlish_ast.exp) : tipe =
-  let rec tc (env:StringtoType.t) (e:Mlish_ast.exp) : tipe= 
+  let rec tc (env:tenv) (e:Mlish_ast.exp) : tipe= 
     let rec check_guess (t1:Mlish_ast.tipe): tipe = (*return normal type or empty guess*)
       (match t1 with
       | Guess_t(t1') -> 
@@ -106,9 +221,8 @@ let type_check_exp (e:Mlish_ast.exp) : tipe =
       if (is_equal t1 t2) then (true) else
       (match t1,t2 with
       | Guess_t(t1'), _ -> 
-        (match !t1' with 
-        (* | None -> t1':= Some t2;true *)
-        | None -> (*avoid something like Guess(t1), t1=Fn(t1)*)
+        (match !t1' with
+        | None ->
           (match t2 with
             | Guess_t(t2') -> if t2'==t1' then true else 
               (match !t2' with
@@ -128,17 +242,8 @@ let type_check_exp (e:Mlish_ast.exp) : tipe =
         unify t1a t2a
       | _,_ -> type_error(""))
     in
-    (* let rec check_guess_list (t1:Mlish_ast.tipe): tipe = (*return normal type or empty guess*)
-      match t1 with
-      | Guess_t(t1') -> 
-        (match !t1' with 
-        | Some t1' -> check_guess_list t1'
-        | None -> t1)
-      | List_t(t1') -> List_t(check_guess_list t1')
-      | ti -> ti
-    in *)
-    let rec tc_PrimApp (env:StringtoType.t)(p:Mlish_ast.prim) (e_list:Mlish_ast.exp list): tipe = 
-      let check_binary_int (env:StringtoType.t)(e_list:Mlish_ast.exp list)(return_tipe:tipe): tipe = 
+    let rec tc_PrimApp (env:tenv)(p:Mlish_ast.prim) (e_list:Mlish_ast.exp list): tipe = 
+      let check_binary_int (env:tenv)(e_list:Mlish_ast.exp list)(return_tipe:tipe): tipe = 
         match e_list with 
         | e1::e2::[] -> 
           (match (check_guess (tc env e1),check_guess (tc env e2)) with
@@ -227,8 +332,8 @@ let type_check_exp (e:Mlish_ast.exp) : tipe =
           | _ -> type_error(""))
         | _ -> type_error(""))
     in
-    let tc_if (env:StringtoType.t) (e1:Mlish_ast.exp) (e2:Mlish_ast.exp) (e3:Mlish_ast.exp):tipe=
-      let tc_if_body (env:StringtoType.t) (e2:Mlish_ast.exp) (e3:Mlish_ast.exp):tipe=
+    let tc_if (env:tenv) (e1:Mlish_ast.exp) (e2:Mlish_ast.exp) (e3:Mlish_ast.exp):tipe=
+      let tc_if_body (env:tenv) (e2:Mlish_ast.exp) (e3:Mlish_ast.exp):tipe=
         match check_guess (tc env e2),check_guess(tc env e3) with
         | Guess_t(t1),Guess_t(t2) -> let g = guess() in t1:=Some g;t2:=Some g;g
         | Guess_t(t1),t2 -> t1:=Some t2;t2
@@ -240,51 +345,14 @@ let type_check_exp (e:Mlish_ast.exp) : tipe =
       | Guess_t(t) -> t:=Some Bool_t;tc_if_body env e2 e3
       | _ -> type_error("") )
     in
-    let tc_let (env:StringtoType.t) (x:Mlish_ast.var) (e1:Mlish_ast.exp) (e2:Mlish_ast.exp):tipe=
-      let rec substitue ((sube,_):Mlish_ast.exp) (key:Mlish_ast.var) ((e,_):Mlish_ast.exp):Mlish_ast.exp=
-        match e with
-        | Var x -> 
-          if key=x 
-            then 
-              (sube,0)
-            else 
-              (Var x,0)
-        | Fn(x,e) -> 
-          if key=x 
-            then 
-              (Fn(x,e),0)
-            else 
-              (Fn(x,substitue (sube,0) key e),0)
-        | App(e1,e2) -> 
-          (App(substitue (sube,0) key e1,substitue (sube,0) key e2),0)
-        | If(e1,e2,e3) -> 
-          (If(substitue (sube,0) key e1,substitue (sube,0) key e2,substitue (sube,0) key e3),0)
-        | Let(x,e1,e2) -> 
-          if key=x 
-            then 
-              (Let(x,e1,e2),0)
-            else 
-              (Let(x,substitue (sube,0) key e1,substitue (sube,0) key e2),0)
-        | PrimApp(p,e_list) -> 
-          let rec sub_lst key sube e_list:Mlish_ast.exp list=
-            match e_list with
-            | [] -> []
-            | e::res -> [substitue (sube,0) key e]@(sub_lst key sube res)
-          in
-          (PrimApp(p,sub_lst key sube e_list),0)
-
-      in
-      let upd_e2 = 
-        (substitue e1 x e2)
-      in
-      (* (print_endline (expr2string upd_e2)); *)
-      (tc env upd_e2)
+    let tc_let (env:tenv) (x:Mlish_ast.var) (e1:Mlish_ast.exp) (e2:Mlish_ast.exp):tipe=
+      type_error "Implement Me"
     in
     match e with (e,_) -> match e with
-      | Var x -> lookup env ("var"^x)
+      | Var x -> instantiate (lookup env ("var"^x))
       | Fn(x,e) -> 
         let t = guess() in
-        Fn_t(t,tc (extend env ("var"^x) t) e)
+        Fn_t(t,tc (extend env ("var"^x) (Forall([],t)) ) e)
       | App(e1,e2) -> 
         let (t1,t2) = (tc env e1, tc env e2) in 
         let t = guess()
