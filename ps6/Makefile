@@ -33,3 +33,26 @@ comp:
 
 clean:
 	-rm *.cmo *.cmi ps6_mlish ml_parse.ml ml_parse.mli ml_lex.ml
+
+POLY=$(wildcard extra_tests_ps6/auto-poly*)
+SIMPLE=$(wildcard extra_tests_ps6/auto-simple*)
+
+list_files:
+	@echo $(POLY) $(SIMPLE)
+
+extra_tests_ps6/auto-simple%:
+	@echo ""
+	./ps6_mlish typecheck $@ > submit.s
+	./ps6_mlish_correct typecheck $@ > ans.s
+	diff submit.s ans.s
+
+extra_tests_ps6/auto-poly%:
+	@echo ""
+	./ps6_mlish typecheck $@ > submit.s
+	./ps6_mlish_correct typecheck $@ > ans.s
+	diff submit.s ans.s
+
+# test_simple: $(patsubst extra_tests_ps6/%, extra_tests_ps6/%, $(SIMPLE))
+test_simple: $(SIMPLE)
+
+test_poly: $(POLY)

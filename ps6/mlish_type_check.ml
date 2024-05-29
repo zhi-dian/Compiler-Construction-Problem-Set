@@ -1,7 +1,9 @@
 open Mlish_ast
 
 exception TypeError
-let type_error(s:string) = (print_string s; raise TypeError)
+let type_error(s:string) = (
+    (* print_string s;  *)
+    raise TypeError)
 
 
 module StringtoType = struct
@@ -239,7 +241,7 @@ let type_check_exp (e:Mlish_ast.exp) : tipe =
     let rec unify (t1:tipe) (t2:tipe):bool =
       (* let t1 = check_guess t1 in
       let t2 = check_guess t2 in *)
-      (print_endline ("unify "^(tipe2str t1)^" and "^(tipe2str t2)));
+      (* (print_endline ("unify "^(tipe2str t1)^" and "^(tipe2str t2))); *)
       if (is_equal t1 t2) then (true) else
       (match t1,t2 with
       | Guess_t(t1'), _ -> 
@@ -360,7 +362,7 @@ let type_check_exp (e:Mlish_ast.exp) : tipe =
         | Guess_t(t1),Guess_t(t2) -> let g = guess() in t1:=Some g;t2:=Some g;g
         | Guess_t(t1),t2 -> t1:=Some t2;t2
         | t1,Guess_t(t2) -> t2:=Some t1;t1
-        | t1,t2 -> if t1=t2 then t1 else type_error("if")
+        | t1,t2 -> if t1=t2 then t1 else type_error("if_body"^(tipe2str t1)^(tipe2str t2))
       in
       (match check_guess (tc env e1) with
       | Bool_t -> tc_if_body env e2 e3
@@ -369,18 +371,18 @@ let type_check_exp (e:Mlish_ast.exp) : tipe =
     in
     let tc_let (env:tenv) (x:Mlish_ast.var) (e1:Mlish_ast.exp) (e2:Mlish_ast.exp):tipe=
       let s = generalize env (tc env e1) in
-      print_endline ("generalize "^x^" successfully");
-      print_endline (tsci2str s);
+      (* print_endline ("generalize "^x^" successfully"); *)
+      (* print_endline (tsci2str s); *)
       tc (extend env ("var"^x) s) e2
     in
-    print_endline (expr2string e);
-    print_endline (tenv2str env);
+    (* print_endline (expr2string e); *)
+    (* print_endline (tenv2str env); *)
     match e with (e,_) -> match e with
       | Var x -> 
-        print_endline ("start instantiate: "^x);
-        print_endline (tsci2str (lookup env ("var"^x)));
+        (* print_endline ("start instantiate: "^x); *)
+        (* print_endline (tsci2str (lookup env ("var"^x))); *)
         let res = instantiate (lookup env ("var"^x)) in
-        print_endline (tipe2str res);
+        (* print_endline (tipe2str res); *)
         res
       | Fn(x,e) -> 
         let t = guess() in
@@ -400,5 +402,5 @@ let type_check_exp (e:Mlish_ast.exp) : tipe =
   in 
   (* print_endline (expr2string e); *)
   let res = (tc [] e) in
-  print_endline "finish checking";
+  (* print_endline "finish checking"; *)
   res
