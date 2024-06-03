@@ -270,12 +270,15 @@ let type_check_exp (e:Mlish_ast.exp) : tipe =
       let check_binary_int (env:tenv)(e_list:Mlish_ast.exp list)(return_tipe:tipe): tipe = 
         match e_list with 
         | e1::e2::[] -> 
-          (match (check_guess (tc env e1),check_guess (tc env e2)) with
-          | Int_t,Int_t -> return_tipe
+          (* (match (check_guess (tc env e1),check_guess (tc env e2)) with *)
+          (match ((tc env e1),(tc env e2)) with
+          (* | Int_t,Int_t -> return_tipe
           | Guess_t(t1),Guess_t(t2) -> t1:=Some Int_t;t2:=Some Int_t;return_tipe
           | Guess_t(t1),Int_t -> t1:=Some Int_t;return_tipe
           | Int_t,Guess_t(t2) -> t2:=Some Int_t;return_tipe
-          | _ -> type_error("primapp"))
+          | _ -> type_error("primapp") *)
+          | t1,t2 -> if ((unify t1 Int_t) && (unify t2 Int_t)) then return_tipe else type_error("primapp")
+          )
           (* if check_guess env (tc env e1) (tc env e2) then return_tipe else type_error("") *)
         | _ -> type_error("primapp")
       in
@@ -299,27 +302,32 @@ let type_check_exp (e:Mlish_ast.exp) : tipe =
       | Fst ->
         (match e_list with 
         | e1::[] -> 
-          (match check_guess (tc env e1) with
-          (* (match tc env e1 with *)
-          | Pair_t(t1,_) -> t1
+          (* (match check_guess (tc env e1) with *)
+          (match tc env e1 with
+          (* | Pair_t(t1,_) -> t1
           | Guess_t(t) -> let g1 = guess() in let g2 = guess() in t:= Some (Pair_t(g1,g2));g1
-          | _ -> type_error("primapp"))
+          | _ -> type_error("primapp") *)
+          | t -> let g1 = guess() in let g2 = guess() in if (unify t (Pair_t(g1,g2))) then g1 else type_error("primapp")
+          )
         | _ -> type_error("primapp"))
       | Snd ->   
         (match e_list with 
         | e1::[] -> 
-          (match check_guess (tc env e1) with
-          (* (match tc env e1 with *)
-          | Pair_t(t1,_) -> t1
+          (* (match check_guess (tc env e1) with *)
+          (match tc env e1 with
+          (* | Pair_t(t1,_) -> t1
           | Guess_t(t) -> let g1 = guess() in let g2 = guess() in t:= Some (Pair_t(g1,g2));g2
-          | _ -> type_error("primapp"))
+          | _ -> type_error("primapp") *)
+          | t -> let g1 = guess() in let g2 = guess() in if (unify t (Pair_t(g1,g2))) then g2 else type_error("primapp")
+          )
         | _ -> type_error("primapp"))
       | Nil -> let g = guess() in if e_list=[] then List_t(g) else type_error("primapp")
       | Cons ->   
         (match e_list with 
         | e1::e2::[] -> 
-          (match (check_guess (tc env e1),check_guess (tc env e2)) with
-          | Guess_t(t1),Guess_t(t2) -> let g = guess() in t1:=Some g;t2:=Some (List_t(g));List_t(g)
+          (* (match (check_guess (tc env e1),check_guess (tc env e2)) with *)
+          (match ((tc env e1),(tc env e2)) with
+          (* | Guess_t(t1),Guess_t(t2) -> let g = guess() in t1:=Some g;t2:=Some (List_t(g));List_t(g)
           (*how does list guarantee t1, t2 has same type if they are all none?*)
           | Guess_t(t1),t2 -> 
               (match t2 with
@@ -329,45 +337,61 @@ let type_check_exp (e:Mlish_ast.exp) : tipe =
           | t1,List_t(t2) -> (match (check_guess t2) with
             | Guess_t(t2') -> t2':= Some t1;List_t(t1)
             | t2' -> if t1=t2' then List_t(t1) else type_error("primapp"))
-          | _,_ -> type_error("primapp"))
+          | _,_ -> type_error("primapp") *)
+          | t1,t2 -> if (unify t2 (List_t(t1))) then List_t(t1) else type_error("primappcons")
+          )
         | _ -> type_error("primapp"))
       | IsNil ->   
         (match e_list with 
         | e1::[] -> 
-          (match check_guess (tc env e1) with
-          | List_t(_) -> Bool_t
+          (* (match check_guess (tc env e1) with *)
+          (match (tc env e1) with
+          (* | List_t(_) -> Bool_t
           | Guess_t(t) -> let g1 = guess() in t:= Some (List_t(g1));Bool_t
-          | _ -> type_error("primapp"))
+          | _ -> type_error("primapp") *)
+          | t -> let g = guess() in if (unify t (List_t(g))) then Bool_t else type_error("primappisnil")
+          )
         | _ -> type_error("primapp"))
       | Hd ->   
         (match e_list with 
         | e1::[] -> 
-          (match check_guess (tc env e1) with
-          | List_t(t) -> t
+          (* (match check_guess (tc env e1) with *)
+          (match (tc env e1) with
+          (* | List_t(t) -> t
           | Guess_t(t) -> let g = guess() in t:=Some (List_t(g));g
-          | _ -> type_error("primapp"))
+          | _ -> type_error("primapp") *)
+          | t -> let g = guess() in if (unify t (List_t(g))) then g else type_error("primapphead")
+          )
         | _ -> type_error("primapp"))
       | Tl ->   
         (match e_list with 
         | e1::[] -> 
-          (match check_guess (tc env e1) with
-          | List_t(t) -> List_t(t)
+          (* (match check_guess (tc env e1) with *)
+          (match (tc env e1) with
+          (* | List_t(t) -> List_t(t)
           | Guess_t(t) -> let g = guess() in t:=Some (List_t(g));List_t(g)
-          | _ -> type_error("primapp"))
+          | _ -> type_error("primapp") *)
+          | t -> let g = guess() in if (unify t (List_t(g))) then List_t(g) else type_error("primapptl")
+          )
         | _ -> type_error("primapp"))
     in
     let tc_if (env:tenv) (e1:Mlish_ast.exp) (e2:Mlish_ast.exp) (e3:Mlish_ast.exp):tipe=
       let tc_if_body (env:tenv) (e2:Mlish_ast.exp) (e3:Mlish_ast.exp):tipe=
+        (* match check_guess (tc env e2),check_guess(tc env e3) with *)
         match check_guess (tc env e2),check_guess(tc env e3) with
-        | Guess_t(t1),Guess_t(t2) -> let g = guess() in t1:=Some g;t2:=Some g;g
+        (* | Guess_t(t1),Guess_t(t2) -> let g = guess() in t1:=Some g;t2:=Some g;g
         | Guess_t(t1),t2 -> t1:=Some t2;t2
         | t1,Guess_t(t2) -> t2:=Some t1;t1
-        | t1,t2 -> if t1=t2 then t1 else type_error("if_body"^(tipe2str t1)^(tipe2str t2))
+        | t1,t2 -> if t1=t2 then t1 else type_error("if_body"^(tipe2str t1)^(tipe2str t2)) *)
+        | t1,t2 -> if (unify t1 t2) then t1 else type_error("if_body")
       in
-      (match check_guess (tc env e1) with
-      | Bool_t -> tc_if_body env e2 e3
+      (* (match check_guess (tc env e1) with *)
+      (match (tc env e1) with
+      (* | Bool_t -> tc_if_body env e2 e3
       | Guess_t(t) -> t:=Some Bool_t;tc_if_body env e2 e3
-      | _ -> type_error("if") )
+      | _ -> type_error("if")  *)
+      | t -> if (unify t Bool_t) then (tc_if_body env e2 e3) else type_error("if")
+      )
     in
     let tc_let (env:tenv) (x:Mlish_ast.var) (e1:Mlish_ast.exp) (e2:Mlish_ast.exp):tipe=
       let s = generalize env (tc env e1) in

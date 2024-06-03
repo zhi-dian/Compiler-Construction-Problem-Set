@@ -40,19 +40,27 @@ SIMPLE=$(wildcard extra_tests_ps6/auto-simple*)
 list_files:
 	@echo $(POLY) $(SIMPLE)
 
-extra_tests_ps6/auto-simple%:
+force_run:
+
+
+extra_tests_ps6/auto-simple%:force_run
 	@echo ""
 	./ps6_mlish typecheck $@ > submit.s
 	./ps6_mlish_correct typecheck $@ > ans.s
 	diff submit.s ans.s
 
-extra_tests_ps6/auto-poly%:
+extra_tests_ps6/auto-poly%:force_run
 	@echo ""
 	./ps6_mlish typecheck $@ > submit.s
 	./ps6_mlish_correct typecheck $@ > ans.s
 	diff submit.s ans.s
+
+.PHONY: test_simple test_poly force_run
 
 # test_simple: $(patsubst extra_tests_ps6/%, extra_tests_ps6/%, $(SIMPLE))
 test_simple: $(SIMPLE)
+	@for file in $(SIMPLE); do \
+		make $$file; \
+	done
 
 test_poly: $(POLY)
